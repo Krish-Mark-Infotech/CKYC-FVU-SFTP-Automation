@@ -325,6 +325,48 @@ namespace FVUFileMove.Services
                 Console.WriteLine(
                     "FVU Utility process completed.");
 
+                // CLEAN FVU INPUT FOLDER
+                // =========================
+
+                Console.WriteLine();
+                Console.WriteLine("Cleaning FVU Input folder...");
+
+                if (Directory.Exists(_fvuInputPath))
+                {
+                    string[] inputFiles =
+                        Directory.GetFiles(
+                            _fvuInputPath,
+                            "*",
+                            SearchOption.TopDirectoryOnly);
+
+                    foreach (string file in inputFiles)
+                    {
+                        try
+                        {
+                            File.Delete(file);
+
+                            Console.WriteLine(
+                                "Deleted FVU input file: " + file);
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine(
+                                "Unable to delete FVU input file: "
+                                + file
+                                + " - "
+                                + ex.Message);
+                        }
+                    }
+
+                    Console.WriteLine(
+                        "FVU Input folder cleanup completed.");
+                }
+
+                await ProcessFVUOutput(
+                    batch,
+                    movedFiles,
+                    csrFilePath);
+
                 await ProcessFVUOutput(
                             batch,
                             movedFiles,
