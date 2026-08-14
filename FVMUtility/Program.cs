@@ -25,7 +25,7 @@ namespace FVUFileMove
             //        ? args[0]
             //        : string.Empty;
 
-            string mwBatchId = "30399";
+            string mwBatchId = "30466";
 
             if (string.IsNullOrWhiteSpace(mwBatchId))
             {
