@@ -1,4 +1,4 @@
-﻿using FVMUtility.Models;
+using FVMUtility.Models;
 using Microsoft.Extensions.Configuration;
 using System.Diagnostics;
 
@@ -16,6 +16,7 @@ namespace FVUFileMove.Services
         private readonly string _fvuOutputPath;
         private readonly string _errorPath;
         private readonly string _successPath;
+        private readonly bool _isSftpUploadEnabled;
        
 
 
@@ -54,6 +55,12 @@ namespace FVUFileMove.Services
                     ?? throw new InvalidOperationException(
                         "SuccessPath is not configured.");
 
+            _isSftpUploadEnabled =
+                string.Equals(
+                    _configuration["ProcessingSettings:EnableSFTPUpload"],
+                    "true",
+                    StringComparison.OrdinalIgnoreCase);
+
 
 
         }
@@ -88,7 +95,7 @@ namespace FVUFileMove.Services
                 "Pending CSR Batches Found: "
                 + pendingBatches.Count);
 
-            // Change P → VI for all pending batches
+            // Change P ? VI for all pending batches
             foreach (BatchDetails batch in pendingBatches)
             {
                 _databaseService.UpdateBatchStatus(
@@ -98,43 +105,18 @@ namespace FVUFileMove.Services
                 Console.WriteLine(
                     "CSRBatchID "
                     + batch.CSRBatchID
-                    + " : P → VI");
+                    + " : P ? VI");
             }
 
             Console.WriteLine();
             Console.WriteLine(
                 "All pending batches have been marked as VI.");
 
-            // Process all CSR batches in parallel
-            //await Parallel.ForEachAsync(
-            //    pendingBatches,
-            //    new ParallelOptions
-            //    {
-            //        MaxDegreeOfParallelism = 5
-            //    },
-            //    async (batch, token) =>
-            //    {
-            //        await ProcessPendingBatch(batch);
-            //    });
-
-            await Parallel.ForEachAsync(
-                pendingBatches,
-                new ParallelOptions
-                {
-                    MaxDegreeOfParallelism = 5
-                },
-                async (batch, token) =>
-                {
-                    await ProcessPendingBatch(batch);
-                });
-
-            Console.WriteLine();
-            Console.WriteLine(
-                "All CSR batches processed.");
-
-            Console.WriteLine();
-
-
+            // FVU utility uses shared input/output folders, so process each CSR batch in sequence.
+            foreach (BatchDetails batch in pendingBatches)
+            {
+                await ProcessPendingBatch(batch);
+            }
             Console.WriteLine();
             Console.WriteLine(
                 "All CSR batches processed.");
@@ -273,7 +255,7 @@ namespace FVUFileMove.Services
                 }
 
                 // Next:
-                // Move files → FVU input
+                // Move files ? FVU input
                 // Run FVU utility
                 // Handle TXT / ZIP
 
@@ -366,11 +348,6 @@ namespace FVUFileMove.Services
                     batch,
                     movedFiles,
                     csrFilePath);
-
-                await ProcessFVUOutput(
-                            batch,
-                            movedFiles,
-                            csrFilePath);
                 //await ProcessFVUOutput(
                 //                    batch,
                 //                    files);
@@ -539,10 +516,18 @@ namespace FVUFileMove.Services
                         "VS",
                         null);
 
-                    // Start SFTP processing
-                    await _sftpProcessingService.ProcessSFTP(
-                        batch,
-                        destination);
+                    if (_isSftpUploadEnabled)
+                    {
+                        // Start SFTP processing
+                        await _sftpProcessingService.ProcessSFTP(
+                            batch,
+                            destination);
+                    }
+                    else
+                    {
+                        Console.WriteLine(
+                            "SFTP upload is disabled by configuration.");
+                    }
 
                     return;
                 }
