@@ -140,13 +140,15 @@ namespace FVUFileMove.Services
         public void UpdateBatchStatus(
     int csrBatchId,
     string status,
-    string errorDesc = null)
+    string errorDesc = null,
+    string fvuOutputFileDtls = null)
         {
             const string query = @"
         UPDATE ckyc..MW_CSR_BATCH_DTLS
         SET
             Status = @Status,
             ErrorDesc = @ErrorDesc,
+            FVUOutputFileDtls = COALESCE(@FVUOutputFileDtls, FVUOutputFileDtls),
             UpdatedDateTime = @UpdatedDateTime
         WHERE CSRBatchID = @CSRBatchID";
 
@@ -168,6 +170,12 @@ namespace FVUFileMove.Services
                 command.Parameters.AddWithValue(
                     "@ErrorDesc",
                     (object)errorDesc ?? DBNull.Value);
+
+                command.Parameters.AddWithValue(
+                    "@FVUOutputFileDtls",
+                    string.IsNullOrWhiteSpace(fvuOutputFileDtls)
+                        ? (object)DBNull.Value
+                        : fvuOutputFileDtls);
 
                 command.Parameters.AddWithValue(
                     "@UpdatedDateTime",

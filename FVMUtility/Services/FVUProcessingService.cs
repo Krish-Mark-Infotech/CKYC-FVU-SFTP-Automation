@@ -244,18 +244,44 @@ namespace FVUFileMove.Services
                     Console.WriteLine(
                         "Destination : " + destinationFile);
 
-                    File.Move(
+                    if (File.Exists(destinationFile))
+                    {
+                        File.Delete(destinationFile);
+                    }
+
+                    File.Copy(
                         file,
-                        destinationFile);
+                        destinationFile,
+                        true);
 
                     Console.WriteLine(
-                        "File moved successfully.");
+                        "File copied successfully.");
 
                     movedFiles.Add(destinationFile);
                 }
 
+
+                string sourceDocFolderPath =
+                    Path.Combine(
+                        csrFilePath,
+                        batch.CSRBatchID.ToString(),
+                        "DOC");
+
+                string fvuSupportDocsPath =
+                    Path.Combine(
+                        Path.GetDirectoryName(_fvuUtilityPath) ?? string.Empty,
+                        "support_docs");
+
+                CleanWorkingFolder(
+                    fvuSupportDocsPath,
+                    "FVU support docs");
+
+                CopySupportDocuments(
+                    sourceDocFolderPath,
+                    fvuSupportDocsPath);
                 // Next:
-                // Move files ? FVU input
+                // Copy files to FVU input
+                // Copy docs to FVU support_docs
                 // Run FVU utility
                 // Handle TXT / ZIP
 
@@ -313,36 +339,15 @@ namespace FVUFileMove.Services
                 Console.WriteLine();
                 Console.WriteLine("Cleaning FVU Input folder...");
 
-                if (Directory.Exists(_fvuInputPath))
-                {
-                    string[] inputFiles =
-                        Directory.GetFiles(
-                            _fvuInputPath,
-                            "*",
-                            SearchOption.TopDirectoryOnly);
+                CleanWorkingFolder(
+                    _fvuInputPath,
+                    "FVU input");
 
-                    foreach (string file in inputFiles)
-                    {
-                        try
-                        {
-                            File.Delete(file);
-
-                            Console.WriteLine(
-                                "Deleted FVU input file: " + file);
-                        }
-                        catch (Exception ex)
-                        {
-                            Console.WriteLine(
-                                "Unable to delete FVU input file: "
-                                + file
-                                + " - "
-                                + ex.Message);
-                        }
-                    }
-
-                    Console.WriteLine(
-                        "FVU Input folder cleanup completed.");
-                }
+                CleanWorkingFolder(
+                    Path.Combine(
+                        Path.GetDirectoryName(_fvuUtilityPath) ?? string.Empty,
+                        "support_docs"),
+                    "FVU support docs");
 
                 await ProcessFVUOutput(
                     batch,
@@ -370,6 +375,106 @@ namespace FVUFileMove.Services
             await Task.CompletedTask;
         }
 
+        private static void CopySupportDocuments(
+            string sourceDocFolderPath,
+            string fvuSupportDocsPath)
+        {
+            if (string.IsNullOrWhiteSpace(sourceDocFolderPath)
+                || !Directory.Exists(sourceDocFolderPath))
+            {
+                Console.WriteLine(
+                    "Source DOC folder not found. Skipping support docs copy: "
+                    + sourceDocFolderPath);
+
+                return;
+            }
+
+            Directory.CreateDirectory(fvuSupportDocsPath);
+
+            string[] sourceFiles =
+                Directory.GetFiles(
+                    sourceDocFolderPath,
+                    "*",
+                    SearchOption.AllDirectories);
+
+            Console.WriteLine(
+                "Support docs found: "
+                + sourceFiles.Length);
+
+            foreach (string sourceFile in sourceFiles)
+            {
+                string relativePath =
+                    sourceFile.Substring(sourceDocFolderPath.Length)
+                        .TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+
+                string destinationFile =
+                    Path.Combine(
+                        fvuSupportDocsPath,
+                        relativePath);
+
+                string destinationDirectory =
+                    Path.GetDirectoryName(destinationFile) ?? fvuSupportDocsPath;
+
+                Directory.CreateDirectory(destinationDirectory);
+
+                File.Copy(
+                    sourceFile,
+                    destinationFile,
+                    true);
+
+                Console.WriteLine(
+                    "Support doc copied: "
+                    + sourceFile
+                    + " -> "
+                    + destinationFile);
+            }
+        }
+
+        private static void CleanWorkingFolder(
+            string folderPath,
+            string folderName)
+        {
+            if (string.IsNullOrWhiteSpace(folderPath))
+            {
+                return;
+            }
+
+            Directory.CreateDirectory(folderPath);
+
+            string[] files =
+                Directory.GetFiles(
+                    folderPath,
+                    "*",
+                    SearchOption.AllDirectories);
+
+            foreach (string file in files)
+            {
+                try
+                {
+                    File.Delete(file);
+
+                    Console.WriteLine(
+                        "Deleted "
+                        + folderName
+                        + " working file: "
+                        + file);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(
+                        "Unable to delete "
+                        + folderName
+                        + " working file: "
+                        + file
+                        + " - "
+                        + ex.Message);
+                }
+            }
+
+            Console.WriteLine(
+                folderName
+                + " cleanup completed.");
+        }
         private string GetExpectedFileExtension(string transactionType)
         {
             return transactionType.Trim().ToUpperInvariant() switch
@@ -511,10 +616,14 @@ namespace FVUFileMove.Services
                     //    destination);
 
 
+                    string fvuOutputFileName =
+                        Path.GetFileName(destination);
+
                     _databaseService.UpdateBatchStatus(
                         batch.CSRBatchID,
                         "VS",
-                        null);
+                        null,
+                        fvuOutputFileName);
 
                     if (_isSftpUploadEnabled)
                     {
