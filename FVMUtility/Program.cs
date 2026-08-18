@@ -7,7 +7,7 @@ namespace FVUFileMove
     {
         private const string Job4MutexName = @"Global\CKYC_FVU_JOB4_LOCK";
 
-        static async Task Main(string[] args)
+        static  void Main(string[] args)
         {
             IConfiguration configuration =
                 new ConfigurationBuilder()
@@ -26,6 +26,8 @@ namespace FVUFileMove
                 args.Length > 0
                     ? args[0]
                     : string.Empty;
+
+
 
             if (string.IsNullOrWhiteSpace(mwBatchId))
             {
@@ -88,7 +90,7 @@ namespace FVUFileMove
                 FVUProcessingService service =
                     new FVUProcessingService(configuration);
 
-                await service.ProcessMWBatch(mwBatchId);
+                 service.ProcessMWBatch(mwBatchId);
             }
             finally
             {

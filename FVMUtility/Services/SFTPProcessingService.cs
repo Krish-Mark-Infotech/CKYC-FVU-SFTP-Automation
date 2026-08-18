@@ -27,7 +27,7 @@ namespace FVUFileMove.Services
         }
 
 
-        public async Task ProcessSFTP(
+        public void ProcessSFTP(
     BatchDetails batch,
     string zipFile)
         {
@@ -111,8 +111,8 @@ namespace FVUFileMove.Services
             Console.WriteLine(
                 "SFTP Runner started successfully.");
 
-            await sftpProcess.WaitForExitAsync();
-
+            // await sftpProcess.WaitForExitAsync();
+            sftpProcess.WaitForExit();
             Console.WriteLine(
                 "SFTP Runner process completed.");
         }

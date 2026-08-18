@@ -66,7 +66,7 @@ namespace FVUFileMove.Services
         }
 
 
-        public async Task ProcessMWBatch(string mwBatchId)
+        public void ProcessMWBatch(string mwBatchId)
         {
             if (string.IsNullOrWhiteSpace(mwBatchId))
             {
@@ -115,14 +115,14 @@ namespace FVUFileMove.Services
             // FVU utility uses shared input/output folders, so process each CSR batch in sequence.
             foreach (BatchDetails batch in pendingBatches)
             {
-                await ProcessPendingBatch(batch);
+                 ProcessPendingBatch(batch);
             }
             Console.WriteLine();
             Console.WriteLine(
                 "All CSR batches processed.");
         }
 
-        private async Task ProcessPendingBatch(BatchDetails batch)
+        private void  ProcessPendingBatch(BatchDetails batch)
         {
             Console.WriteLine(
                 "Processing CSRBatchID: " +
@@ -328,7 +328,8 @@ namespace FVUFileMove.Services
                 Console.WriteLine(
                     "FVU Utility started successfully.");
 
-                await fvuProcess.WaitForExitAsync();
+                // fvuProcess.WaitForExitAsync();
+                fvuProcess.WaitForExit();
 
                 Console.WriteLine(
                     "FVU Utility process completed.");
@@ -349,7 +350,7 @@ namespace FVUFileMove.Services
                         "support_docs"),
                     "FVU support docs");
 
-                await ProcessFVUOutput(
+                 ProcessFVUOutput(
                     batch,
                     movedFiles,
                     csrFilePath);
@@ -372,7 +373,7 @@ namespace FVUFileMove.Services
                     ex.Message);
             }
 
-            await Task.CompletedTask;
+            //await Task.CompletedTask;
         }
 
         private static void CopySupportDocuments(
@@ -487,7 +488,7 @@ namespace FVUFileMove.Services
         }
 
 
-        private async Task ProcessFVUOutput(
+        private void ProcessFVUOutput(
                             BatchDetails batch,
                             List<string> movedFiles,
                             string csrFilePath)
@@ -547,8 +548,9 @@ namespace FVUFileMove.Services
                     string batchErrorPath =
                         Path.Combine(
                             csrFilePath,
-                            batch.CSRBatchID.ToString(),
-                            "Error");
+                            batch.CSRBatchID.ToString());
+                        //,   "Error"); commented for taking error file in same folder as input file
+
 
                     Directory.CreateDirectory(
                         batchErrorPath);
@@ -571,10 +573,15 @@ namespace FVUFileMove.Services
                     Console.WriteLine(
                         "TXT moved successfully.");
 
+                    string fvuOutputFileName =
+                            Path.GetFileName(destination);
+
                     _databaseService.UpdateBatchStatus(
                         batch.CSRBatchID,
                         "VF",
-                        destination);
+                        destination,
+                        fvuOutputFileName);
+                       // destination);
 
                     return;
                 }
@@ -628,7 +635,7 @@ namespace FVUFileMove.Services
                     if (_isSftpUploadEnabled)
                     {
                         // Start SFTP processing
-                        await _sftpProcessingService.ProcessSFTP(
+                         _sftpProcessingService.ProcessSFTP(
                             batch,
                             destination);
                     }
@@ -654,7 +661,7 @@ namespace FVUFileMove.Services
                     "No matching FVU output found.");
             }
 
-            await Task.CompletedTask;
+            //await Task.CompletedTask;
         }
 
         //    private async Task ProcessFVUOutput(
