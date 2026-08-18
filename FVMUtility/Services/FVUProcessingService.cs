@@ -481,7 +481,7 @@ namespace FVUFileMove.Services
             {
                 "SEARCH" => ".SRC",
                 "DOWNLOAD" => ".DWN",
-                "REGISTRATION" => ".REG",
+                "REGISTRATION" => ".UPL",
                 _ => string.Empty
             };
         }
