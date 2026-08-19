@@ -637,7 +637,11 @@ namespace FVUFileMove.Services
                     if (_isSftpUploadEnabled)
                     {
                         // Start SFTP processing
-                         _sftpProcessingService.ProcessSFTP(
+                        //_sftpProcessingService.ProcessSFTP(
+                        //   batch,
+                        //   destination);
+
+                        _sftpProcessingService.ProcessSFTP(
                             batch,
                             destination);
                     }
