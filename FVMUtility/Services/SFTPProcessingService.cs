@@ -1,5 +1,6 @@
 ﻿using FVMUtility.Models;
 using Microsoft.Extensions.Configuration;
+using System.Diagnostics;
 using System.Net.Http.Headers;
 
 namespace FVUFileMove.Services
@@ -7,19 +8,36 @@ namespace FVUFileMove.Services
     public class SFTPProcessingService
     {
         private readonly string _apiUrl;
+        private readonly string _sftpInputPath;
+        private readonly string _sftpRunnerPath;
+        private readonly bool _useApi;
 
         public SFTPProcessingService(
             IConfiguration configuration)
         {
+            _useApi =
+                configuration.GetValue<bool>(
+                   "ProcessingSettings:API");
+
             _apiUrl =
                 configuration["SFTPExecution:ApiUrl"]
                 ?? throw new InvalidOperationException(
                     "SFTPExecution API URL is not configured.");
+
+            _sftpInputPath =
+                configuration["FileSettings:SFTPInputPath"]
+                ?? throw new InvalidOperationException(
+                    "SFTPInputPath is not configured.");
+
+            _sftpRunnerPath =
+                configuration["FileSettings:SFTPRunnerPath"]
+                ?? throw new InvalidOperationException(
+                    "SFTPRunnerPath is not configured.");
         }
 
         public void ProcessSFTP(
-            BatchDetails batch,
-            string zipFile)
+    BatchDetails batch,
+    string zipFile)
         {
             Console.WriteLine();
             Console.WriteLine("SFTP Processing");
@@ -31,7 +49,6 @@ namespace FVUFileMove.Services
             Console.WriteLine(
                 "ZIP Source: " + zipFile);
 
-            // Check ZIP exists
             if (!File.Exists(zipFile))
             {
                 throw new FileNotFoundException(
@@ -40,18 +57,117 @@ namespace FVUFileMove.Services
             }
 
             Console.WriteLine(
+                "SFTP Execution Mode: "
+                + (_useApi ? "API" : "LOCAL"));
+
+            if (_useApi)
+            {
+                ProcessSFTPUsingAPI(
+                    batch,
+                    zipFile);
+            }
+            else
+            {
+                ProcessSFTPUsingLocal(
+                    batch,
+                    zipFile);
+            }
+        }
+
+
+        //Use Local Exe for SFTP Processing
+        private void ProcessSFTPUsingLocal(
+    BatchDetails batch,
+    string zipFile)
+        {
+            Console.WriteLine(
+                "Executing local SFTPRunner.exe...");
+
+            if (!Directory.Exists(_sftpInputPath))
+            {
+                Directory.CreateDirectory(
+                    _sftpInputPath);
+            }
+
+            string fileName =
+                Path.GetFileName(zipFile);
+
+            string destination =
+                Path.Combine(
+                    _sftpInputPath,
+                    fileName);
+
+            Console.WriteLine(
+                "SFTP Destination: "
+                + destination);
+
+            if (File.Exists(destination))
+            {
+                File.Delete(destination);
+            }
+
+            File.Copy(
+                zipFile,
+                destination,
+                true);
+
+            Console.WriteLine(
+                "ZIP copied to SFTP upload folder.");
+
+            if (!File.Exists(_sftpRunnerPath))
+            {
+                throw new FileNotFoundException(
+                    "SFTP Runner not found.",
+                    _sftpRunnerPath);
+            }
+
+            Console.WriteLine(
+                "SFTP Runner Path: "
+                + _sftpRunnerPath);
+
+            ProcessStartInfo processStartInfo =
+                new ProcessStartInfo
+                {
+                    FileName = _sftpRunnerPath,
+                    WorkingDirectory =
+                        Path.GetDirectoryName(
+                            _sftpRunnerPath),
+                    UseShellExecute = true
+                };
+
+            using Process? sftpProcess =
+                Process.Start(processStartInfo);
+
+            if (sftpProcess == null)
+            {
+                throw new Exception(
+                    "Unable to start SFTP Runner.");
+            }
+
+            Console.WriteLine(
+                "SFTP Runner started successfully.");
+
+            sftpProcess.WaitForExit();
+
+            Console.WriteLine(
+                "SFTP Runner process completed.");
+        }
+
+
+
+        //use API for SFTP Processing
+        private void ProcessSFTPUsingAPI(
+             BatchDetails batch,
+             string zipFile)
+        {
+            Console.WriteLine(
                 "Calling SFTPExecutionAPI...");
 
             using HttpClient client =
-                new HttpClient()
-
+                new HttpClient
                 {
                     Timeout = TimeSpan.FromMinutes(30)
                 };
-            ;
-
-          
-
 
             using MultipartFormDataContent content =
                 new MultipartFormDataContent();
@@ -111,11 +227,114 @@ namespace FVUFileMove.Services
             Console.WriteLine(
                 "SFTP processing completed successfully.");
         }
+
+
+
+
+
+
     }
 }
 
 
 
+
+
+
+//public void ProcessSFTP(
+//     BatchDetails batch,
+//     string zipFile)
+//{
+//    Console.WriteLine();
+//    Console.WriteLine("SFTP Processing");
+//    Console.WriteLine("-------------------------");
+
+//    Console.WriteLine(
+//        "CSRBatchID: " + batch.CSRBatchID);
+
+//    Console.WriteLine(
+//        "ZIP Source: " + zipFile);
+
+//    // Check ZIP exists
+//    if (!File.Exists(zipFile))
+//    {
+//        throw new FileNotFoundException(
+//            "ZIP file not found.",
+//            zipFile);
+//    }
+
+//    Console.WriteLine(
+//        "Calling SFTPExecutionAPI...");
+
+//    using HttpClient client =
+//        new HttpClient()
+
+//        {
+//            Timeout = TimeSpan.FromMinutes(30)
+//        };
+//    ;
+
+
+//    using MultipartFormDataContent content =
+//        new MultipartFormDataContent();
+
+//    using FileStream fileStream =
+//        File.OpenRead(zipFile);
+
+//    using StreamContent fileContent =
+//        new StreamContent(fileStream);
+
+//    fileContent.Headers.ContentType =
+//        new MediaTypeHeaderValue(
+//            "application/zip");
+
+//    // Add ZIP file
+//    content.Add(
+//        fileContent,
+//        "file",
+//        Path.GetFileName(zipFile));
+
+//    // Add CSRBatchID
+//    content.Add(
+//        new StringContent(
+//            batch.CSRBatchID.ToString()),
+//        "batchId");
+
+//    Console.WriteLine(
+//        "Sending ZIP to Server B...");
+
+//    HttpResponseMessage response =
+//        client.PostAsync(
+//            _apiUrl,
+//            content)
+//        .GetAwaiter()
+//        .GetResult();
+
+//    string responseContent =
+//        response.Content
+//            .ReadAsStringAsync()
+//            .GetAwaiter()
+//            .GetResult();
+
+//    Console.WriteLine(
+//        "Server B Response: "
+//        + responseContent);
+
+//    if (!response.IsSuccessStatusCode)
+//    {
+//        throw new Exception(
+//            "SFTPExecutionAPI failed. "
+//            + "Status: "
+//            + response.StatusCode
+//            + ", Response: "
+//            + responseContent);
+//    }
+
+//    Console.WriteLine(
+//        "SFTP processing completed successfully.");
+//}
+
+//-----------------------------------------------
 //using FVMUtility.Models;
 //using Microsoft.Extensions.Configuration;
 //using System.Diagnostics;
