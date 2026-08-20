@@ -156,9 +156,11 @@ namespace FVUFileMove.Services
 
 
         //use API for SFTP Processing
+
+
         private void ProcessSFTPUsingAPI(
-             BatchDetails batch,
-             string zipFile)
+    BatchDetails batch,
+    string zipFile)
         {
             Console.WriteLine(
                 "Calling SFTPExecutionAPI...");
@@ -166,7 +168,9 @@ namespace FVUFileMove.Services
             using HttpClient client =
                 new HttpClient
                 {
-                    Timeout = TimeSpan.FromMinutes(30)
+                    // This is only the maximum time to wait
+                    // for the API HTTP response.
+                    Timeout = TimeSpan.FromMinutes(5)
                 };
 
             using MultipartFormDataContent content =
@@ -211,22 +215,108 @@ namespace FVUFileMove.Services
                     .GetResult();
 
             Console.WriteLine(
+                "Server B HTTP Status: "
+                + (int)response.StatusCode
+                + " "
+                + response.StatusCode);
+
+            Console.WriteLine(
                 "Server B Response: "
                 + responseContent);
 
-            if (!response.IsSuccessStatusCode)
+            // 202 is the expected response.
+            if (response.StatusCode !=
+                System.Net.HttpStatusCode.Accepted)
             {
                 throw new Exception(
                     "SFTPExecutionAPI failed. "
-                    + "Status: "
+                    + "Expected HTTP 202 Accepted, but received "
                     + response.StatusCode
-                    + ", Response: "
+                    + ". Response: "
                     + responseContent);
             }
 
             Console.WriteLine(
-                "SFTP processing completed successfully.");
+                "SFTP job accepted by Server B.");
+
+            Console.WriteLine(
+                "SFTPExecutor is running independently on Server B.");
+
+            // ProcessSFTP() returns here.
         }
+
+
+        //private void ProcessSFTPUsingAPI(
+        //     BatchDetails batch,
+        //     string zipFile)
+        //{
+        //    Console.WriteLine(
+        //        "Calling SFTPExecutionAPI...");
+
+        //    using HttpClient client =
+        //        new HttpClient
+        //        {
+        //            Timeout = TimeSpan.FromMinutes(30)
+        //        };
+
+        //    using MultipartFormDataContent content =
+        //        new MultipartFormDataContent();
+
+        //    using FileStream fileStream =
+        //        File.OpenRead(zipFile);
+
+        //    using StreamContent fileContent =
+        //        new StreamContent(fileStream);
+
+        //    fileContent.Headers.ContentType =
+        //        new MediaTypeHeaderValue(
+        //            "application/zip");
+
+        //    // Add ZIP file
+        //    content.Add(
+        //        fileContent,
+        //        "file",
+        //        Path.GetFileName(zipFile));
+
+        //    // Add CSRBatchID
+        //    content.Add(
+        //        new StringContent(
+        //            batch.CSRBatchID.ToString()),
+        //        "batchId");
+
+        //    Console.WriteLine(
+        //        "Sending ZIP to Server B...");
+
+        //    HttpResponseMessage response =
+        //        client.PostAsync(
+        //            _apiUrl,
+        //            content)
+        //        .GetAwaiter()
+        //        .GetResult();
+
+        //    string responseContent =
+        //        response.Content
+        //            .ReadAsStringAsync()
+        //            .GetAwaiter()
+        //            .GetResult();
+
+        //    Console.WriteLine(
+        //        "Server B Response: "
+        //        + responseContent);
+
+        //    if (!response.IsSuccessStatusCode)
+        //    {
+        //        throw new Exception(
+        //            "SFTPExecutionAPI failed. "
+        //            + "Status: "
+        //            + response.StatusCode
+        //            + ", Response: "
+        //            + responseContent);
+        //    }
+
+        //    Console.WriteLine(
+        //        "SFTP processing completed successfully.");
+        //}
 
 
 
