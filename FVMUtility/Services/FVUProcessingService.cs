@@ -575,8 +575,6 @@ namespace FVUFileMove.Services
 
                     string fvuOutputFileName =
                             Path.GetFileName(destination);
-                    //Console.WriteLine(destination);
-                    //Console.WriteLine(fvuOutputFileName);
 
                     _databaseService.UpdateBatchStatus(
                         batch.CSRBatchID,
