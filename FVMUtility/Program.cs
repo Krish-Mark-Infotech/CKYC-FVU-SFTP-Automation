@@ -22,11 +22,11 @@ namespace FVUFileMove
             Console.WriteLine("       FVU File Move Started");
             Console.WriteLine("=================================");
 
-            //string mwBatchId =
-            //    args.Length > 0
-            //        ? args[0]
-            //        : string.Empty;
-            string mwBatchId = "30288";
+            string mwBatchId =
+                args.Length > 0
+                    ? args[0]
+                    : string.Empty;
+            // string mwBatchId = "30758";
 
 
             if (string.IsNullOrWhiteSpace(mwBatchId))
