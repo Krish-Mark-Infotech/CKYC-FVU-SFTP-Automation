@@ -566,7 +566,7 @@ namespace FVUFileMove.Services
                     Console.WriteLine(
                         "Moving TXT to: " + destination);
 
-                    File.Move(
+                    File.Copy(
                         txtFile,
                         destination);
 
@@ -610,7 +610,7 @@ namespace FVUFileMove.Services
                     Console.WriteLine(
                         "Moving ZIP to: " + destination);
 
-                    File.Move(
+                    File.Copy(
                         zipFile,
                         destination);
 
