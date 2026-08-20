@@ -43,7 +43,15 @@ namespace FVUFileMove.Services
                 "Calling SFTPExecutionAPI...");
 
             using HttpClient client =
-                new HttpClient();
+                new HttpClient()
+
+                {
+                    Timeout = TimeSpan.FromMinutes(30)
+                };
+            ;
+
+          
+
 
             using MultipartFormDataContent content =
                 new MultipartFormDataContent();
