@@ -9,6 +9,7 @@ namespace FVUFileMove.Services
         private readonly IConfiguration _configuration;
         private readonly DatabaseService _databaseService;
         private readonly SFTPProcessingService _sftpProcessingService;
+        private readonly LogService _logger;
 
 
         private readonly string _fvuInputPath;
@@ -21,15 +22,16 @@ namespace FVUFileMove.Services
 
 
         public FVUProcessingService(
-            IConfiguration configuration)
+            IConfiguration configuration, LogService logger)
         {
             _configuration = configuration;
+            _logger = logger;
 
             _databaseService =
-                new DatabaseService(configuration);
+                new DatabaseService(configuration,logger);
 
             _sftpProcessingService =
-            new SFTPProcessingService(configuration);
+            new SFTPProcessingService(configuration, logger);
            
             _fvuInputPath =
                    _configuration["FileSettings:FVUInputPath"]
@@ -70,17 +72,34 @@ namespace FVUFileMove.Services
         {
             if (string.IsNullOrWhiteSpace(mwBatchId))
             {
+
+                _logger.Error(
+                    "MWBatchID is required.");
+
                 Console.WriteLine("MWBatchID is required.");
                 return;
             }
+
+            _logger.Info(
+                "Processing MWBatchID: "
+            + mwBatchId);
 
             Console.WriteLine();
             Console.WriteLine("MW Batch ID: " + mwBatchId);
             Console.WriteLine("-------------------------");
 
+
+            _logger.Info(
+            "Fetching pending CSR batches for MWBatchID: "
+            + mwBatchId);
             // Get all pending CSR batches under the given MWBatchID
             List<BatchDetails> pendingBatches =
                 _databaseService.GetPendingBatches(mwBatchId);
+
+
+            _logger.Info(
+                "Pending CSR batches found: "
+                + pendingBatches.Count);
 
             if (pendingBatches.Count == 0)
             {
@@ -98,9 +117,17 @@ namespace FVUFileMove.Services
             // Change P ? VI for all pending batches
             foreach (BatchDetails batch in pendingBatches)
             {
+
+                _logger.Info(
+                    $"CSRBatchID {batch.CSRBatchID}: Updating status P -> VI");
+
+
                 _databaseService.UpdateBatchStatus(
                     batch.CSRBatchID,
                     "VI");
+
+                _logger.Info(
+                              $"CSRBatchID {batch.CSRBatchID}: Updated status P -> VI");
 
                 Console.WriteLine(
                     "CSRBatchID "
@@ -115,7 +142,14 @@ namespace FVUFileMove.Services
             // FVU utility uses shared input/output folders, so process each CSR batch in sequence.
             foreach (BatchDetails batch in pendingBatches)
             {
-                 ProcessPendingBatch(batch);
+
+                _logger.Info(
+                    $"Starting processing for CSRBatchID: {batch.CSRBatchID}");
+
+                ProcessPendingBatch(batch);
+                _logger.Info(
+                    $"Finished processing for CSRBatchID: {batch.CSRBatchID}");
+            
             }
             Console.WriteLine();
             Console.WriteLine(
@@ -366,6 +400,10 @@ namespace FVUFileMove.Services
                     + batch.CSRBatchID
                     + ": "
                     + ex.Message);
+
+                _logger.Error(
+                       $"Error processing CSRBatchID {batch.CSRBatchID}",
+                       ex);
 
                 _databaseService.UpdateBatchStatus(
                     batch.CSRBatchID,

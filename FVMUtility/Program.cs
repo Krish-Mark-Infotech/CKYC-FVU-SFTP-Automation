@@ -1,3 +1,5 @@
+
+
 using FVUFileMove.Services;
 using Microsoft.Extensions.Configuration;
 
@@ -5,9 +7,10 @@ namespace FVUFileMove
 {
     internal class Program
     {
-        private const string Job4MutexName = @"Global\CKYC_FVU_JOB4_LOCK";
+        private const string Job4MutexName =
+            @"Global\CKYC_FVU_JOB4_LOCK";
 
-        static  void Main(string[] args)
+        static void Main(string[] args)
         {
             IConfiguration configuration =
                 new ConfigurationBuilder()
@@ -18,6 +21,14 @@ namespace FVUFileMove
                         reloadOnChange: false)
                     .Build();
 
+            // Create logger
+            LogService logger =
+                new LogService(configuration);
+
+            logger.Info("=================================");
+            logger.Info("FVMUtility Started");
+            logger.Info("=================================");
+
             Console.WriteLine("=================================");
             Console.WriteLine("       FVU File Move Started");
             Console.WriteLine("=================================");
@@ -26,12 +37,21 @@ namespace FVUFileMove
                 args.Length > 0
                     ? args[0]
                     : string.Empty;
-            //string mwBatchId = "30853";
 
+
+            //string mwBatchId = "30924";
+            logger.Info(
+                "MWBatchID received: "
+                + mwBatchId);
 
             if (string.IsNullOrWhiteSpace(mwBatchId))
             {
-                Console.WriteLine("MWBatchID is required.");
+                logger.Error(
+                    "MWBatchID is required.");
+
+                Console.WriteLine(
+                    "MWBatchID is required.");
+
                 return;
             }
 
@@ -49,6 +69,10 @@ namespace FVUFileMove
                 "MWBatchID: " + mwBatchId);
 
             Console.WriteLine(
+                "Waiting for Job4 lock. Timeout minutes: "
+                + lockWaitMinutes);
+
+            logger.Info(
                 "Waiting for Job4 lock. Timeout minutes: "
                 + lockWaitMinutes);
 
@@ -74,11 +98,17 @@ namespace FVUFileMove
 
                     Console.WriteLine(
                         "Previous Job4 process ended without releasing the lock. Continuing with current batch.");
+
+                    logger.Warning(
+                        "Previous Job4 process ended without releasing the lock. Continuing with current batch.");
                 }
 
                 if (!lockTaken)
                 {
                     Console.WriteLine(
+                        "Job4 lock wait timed out. Another Job4 process is still running.");
+
+                    logger.Warning(
                         "Job4 lock wait timed out. Another Job4 process is still running.");
 
                     return;
@@ -87,10 +117,32 @@ namespace FVUFileMove
                 Console.WriteLine(
                     "Job4 lock acquired.");
 
-                FVUProcessingService service =
-                    new FVUProcessingService(configuration);
+                logger.Info(
+                    "Job4 lock acquired.");
 
-                 service.ProcessMWBatch(mwBatchId);
+                FVUProcessingService service =
+                    new FVUProcessingService(
+                        configuration,
+                        logger);
+
+                logger.Info(
+                    "Starting FVUProcessingService.");
+
+                service.ProcessMWBatch(
+                    mwBatchId);
+
+                logger.Info(
+                    "FVUProcessingService completed.");
+            }
+            catch (Exception ex)
+            {
+                logger.Error(
+                    "Unhandled exception in FVMUtility.",
+                    ex);
+
+                Console.WriteLine(
+                    "Unhandled error: "
+                    + ex.Message);
             }
             finally
             {
@@ -100,6 +152,9 @@ namespace FVUFileMove
 
                     Console.WriteLine(
                         "Job4 lock released.");
+
+                    logger.Info(
+                        "Job4 lock released.");
                 }
             }
 
@@ -107,6 +162,9 @@ namespace FVUFileMove
             Console.WriteLine("=================================");
             Console.WriteLine("       FVU File Move Completed");
             Console.WriteLine("=================================");
+
+            logger.Info("FVMUtility Completed");
+            logger.Info("=================================");
         }
     }
 }

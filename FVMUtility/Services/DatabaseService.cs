@@ -7,10 +7,12 @@
         public class DatabaseService
         {
             private readonly string _connectionString;
-
-            public DatabaseService(IConfiguration configuration)
+            private readonly LogService _logger;
+        public DatabaseService(IConfiguration configuration, LogService logger)
             {
-                _connectionString =
+
+            _logger = logger;
+            _connectionString =
                     configuration.GetConnectionString("CKYCDataBase")
                     ?? throw new InvalidOperationException(
                         "CKYCDataBase connection string is not configured.");
@@ -42,18 +44,45 @@
                     command.ExecuteReader();
 
                 if (reader.Read())
-                {
-                    return reader["CSRFilepath"]
+            //{
+            //    return reader["CSRFilepath"]
+            //        ?.ToString()
+            //        ?.Trim()
+            //        ?? string.Empty;
+            //}
+
+
+            {
+                string csrFilePath =
+                    reader["CSRFilepath"]
                         ?.ToString()
                         ?.Trim()
                         ?? string.Empty;
-                }
 
-                return string.Empty;
+                _logger.Info(
+                    "DB: CSR file path found for TransactionType: "
+                    + transactionType
+                    + " | Path: "
+                    + csrFilePath);
+
+                return csrFilePath;
+            }
+
+            _logger.Warning(
+            "DB: No CSR file path found for TransactionType: "
+            + transactionType);
+
+            return string.Empty;
             }
             public List<BatchDetails> GetPendingBatches(string mwBatchId)
             {
-                const string query = @"
+
+            _logger.Info(
+               "DB: Fetching pending batches for MWBatchID: "
+               + mwBatchId);
+
+
+            const string query = @"
                     SELECT
                         ID,
                         MWBatchID,
@@ -103,14 +132,26 @@
                     }
                 }
 
-                return batches;
+            _logger.Info(
+                      "DB: Pending batches returned for MWBatchID "
+                      + mwBatchId
+                      + ": "
+                      + batches.Count);
+            return batches;
             }
 
 
 
             public void UpdateVFToPending(int csrBatchId)
             {
-                const string query = @"
+
+
+            _logger.Info(
+              "DB: Updating CSRBatchID "
+              + csrBatchId
+              + " status VF -> P");
+
+            const string query = @"
             UPDATE ckyc..MW_CSR_BATCH_DTLS
             SET
                 Status = 'P',
@@ -134,8 +175,14 @@
 
                 connection.Open();
 
-                command.ExecuteNonQuery();
-            }
+            int rowsAffected = command.ExecuteNonQuery();
+            _logger.Info(
+              "DB: CSRBatchID "
+              + csrBatchId
+              + " VF -> P update completed. Rows affected: "
+              + rowsAffected);
+
+        }
 
             public void UpdateBatchStatus(
         int csrBatchId,
@@ -143,7 +190,14 @@
         string errorDesc = null,
         string fvuOutputFileDtls = null)
             {
-                const string query = @"
+
+            _logger.Info(
+              "DB: Updating CSRBatchID "
+              + csrBatchId
+              + " status to "
+              + status);
+
+            const string query = @"
             UPDATE ckyc..MW_CSR_BATCH_DTLS
             SET
                 Status = @Status,
@@ -183,8 +237,16 @@
 
                     connection.Open();
 
-                    command.ExecuteNonQuery();
-                }
+                   int rowsAffected = command.ExecuteNonQuery();
+
+                _logger.Info(
+                "DB: CSRBatchID "
+                + csrBatchId
+                + " status updated to "
+                + status
+                + ". Rows affected: "
+                + rowsAffected);
+            }
             }
 
 

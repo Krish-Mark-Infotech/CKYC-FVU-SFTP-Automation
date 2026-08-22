@@ -11,10 +11,13 @@ namespace FVUFileMove.Services
         private readonly string _sftpInputPath;
         private readonly string _sftpRunnerPath;
         private readonly bool _useApi;
+        private readonly LogService _logger;
 
         public SFTPProcessingService(
-            IConfiguration configuration)
+            IConfiguration configuration, LogService logger)
         {
+
+            _logger = logger;
             _useApi =
                 configuration.GetValue<bool>(
                    "ProcessingSettings:API");
@@ -42,6 +45,8 @@ namespace FVUFileMove.Services
             Console.WriteLine();
             Console.WriteLine("SFTP Processing");
             Console.WriteLine("-------------------------");
+            _logger.Info(
+                $"SFTP processing started for CSRBatchID: {batch.CSRBatchID}");
 
             Console.WriteLine(
                 "CSRBatchID: " + batch.CSRBatchID);
@@ -51,14 +56,28 @@ namespace FVUFileMove.Services
 
             if (!File.Exists(zipFile))
             {
+
+                _logger.Error(
+                     $"SFTP ZIP file not found for CSRBatchID: {batch.CSRBatchID} | File: {zipFile}");
+
+
                 throw new FileNotFoundException(
                     "ZIP file not found.",
                     zipFile);
             }
 
+            _logger.Info(
+                    $"SFTP ZIP file verified for CSRBatchID: {batch.CSRBatchID}");
+
             Console.WriteLine(
                 "SFTP Execution Mode: "
                 + (_useApi ? "API" : "LOCAL"));
+
+            _logger.Info(
+                    $"SFTP execution mode: {(_useApi ? "API" : "LOCAL")}");
+
+            _logger.Info(
+                    $"Starting SFTP execution for CSRBatchID: {batch.CSRBatchID}");
 
             if (_useApi)
             {
@@ -80,6 +99,9 @@ namespace FVUFileMove.Services
     BatchDetails batch,
     string zipFile)
         {
+            _logger.Info(
+                    $"SFTP LOCAL processing started for CSRBatchID: {batch.CSRBatchID}");
+
             Console.WriteLine(
                 "Executing local SFTPRunner.exe...");
 
@@ -114,8 +136,15 @@ namespace FVUFileMove.Services
             Console.WriteLine(
                 "ZIP copied to SFTP upload folder.");
 
+            _logger.Info(
+                     $"ZIP copied to SFTP upload folder: {destination}");
+
             if (!File.Exists(_sftpRunnerPath))
             {
+
+                _logger.Error(
+                    $"SFTP Runner not found: {_sftpRunnerPath}");
+
                 throw new FileNotFoundException(
                     "SFTP Runner not found.",
                     _sftpRunnerPath);
@@ -124,6 +153,10 @@ namespace FVUFileMove.Services
             Console.WriteLine(
                 "SFTP Runner Path: "
                 + _sftpRunnerPath);
+
+
+            _logger.Info(
+                         $"Starting SFTP Runner: {_sftpRunnerPath}");
 
             ProcessStartInfo processStartInfo =
                 new ProcessStartInfo
@@ -147,10 +180,14 @@ namespace FVUFileMove.Services
             Console.WriteLine(
                 "SFTP Runner started successfully.");
 
+            _logger.Info(
+                        $"SFTP Runner started successfully for CSRBatchID: {batch.CSRBatchID}");
             sftpProcess.WaitForExit();
 
             Console.WriteLine(
                 "SFTP Runner process completed.");
+            _logger.Info(
+                    $"SFTP Runner process completed for CSRBatchID: {batch.CSRBatchID}");
         }
 
 
@@ -162,6 +199,11 @@ namespace FVUFileMove.Services
     BatchDetails batch,
     string zipFile)
         {
+
+            _logger.Info(
+            $"SFTP API processing started for CSRBatchID: {batch.CSRBatchID}");
+
+
             Console.WriteLine(
                 "Calling SFTPExecutionAPI...");
 
@@ -201,12 +243,17 @@ namespace FVUFileMove.Services
             Console.WriteLine(
                 "Sending ZIP to Server B...");
 
+            _logger.Info(
+    $"Sending ZIP to Server B. CSRBatchID: {batch.CSRBatchID} | ZIP: {Path.GetFileName(zipFile)}");
+
             HttpResponseMessage response =
                 client.PostAsync(
                     _apiUrl,
                     content)
                 .GetAwaiter()
                 .GetResult();
+            _logger.Info(
+    $"SFTPExecutionAPI response received. CSRBatchID: {batch.CSRBatchID} | HTTP Status: {(int)response.StatusCode}");
 
             string responseContent =
                 response.Content
@@ -228,6 +275,11 @@ namespace FVUFileMove.Services
             if (response.StatusCode !=
                 System.Net.HttpStatusCode.Accepted)
             {
+
+
+                _logger.Error(
+                             $"SFTPExecutionAPI failed for CSRBatchID: {batch.CSRBatchID} | HTTP Status: {(int)response.StatusCode} {response.StatusCode}");
+
                 throw new Exception(
                     "SFTPExecutionAPI failed. "
                     + "Expected HTTP 202 Accepted, but received "
@@ -239,8 +291,14 @@ namespace FVUFileMove.Services
             Console.WriteLine(
                 "SFTP job accepted by Server B.");
 
+            _logger.Info(
+                        $"SFTP job accepted by Server B. CSRBatchID: {batch.CSRBatchID}");
+
             Console.WriteLine(
                 "SFTPExecutor is running independently on Server B.");
+
+            _logger.Info(
+                    $"SFTPExecutor is running independently on Server B for CSRBatchID: {batch.CSRBatchID}");
 
             // ProcessSFTP() returns here.
         }

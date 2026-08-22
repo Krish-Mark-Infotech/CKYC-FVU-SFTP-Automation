@@ -10,9 +10,11 @@ namespace FVUFileMove.Services
         private readonly string _username;
         private readonly string _password;
         private readonly string _uploadPath;
-
-        public SFTPFileTransferService(IConfiguration configuration)
+        private readonly LogService _logger;
+        public SFTPFileTransferService(IConfiguration configuration, LogService logger)
         {
+            _logger = logger;
+
             _host = configuration["SFTPServerB:Host"]
                 ?? throw new Exception("SFTP Server B Host is missing.");
 
@@ -31,8 +33,16 @@ namespace FVUFileMove.Services
 
         public void UploadFile(string localFilePath)
         {
+
+            _logger.Info(
+                    $"SFTP file upload started: {localFilePath}");
+
             if (!File.Exists(localFilePath))
             {
+
+                _logger.Error(
+                             $"SFTP upload file not found: {localFilePath}");
+
                 throw new FileNotFoundException(
                     "File not found.",
                     localFilePath);
@@ -47,20 +57,35 @@ namespace FVUFileMove.Services
             Console.WriteLine(
                 $"Connecting to SFTP Server B: {_host}:{_port}");
 
+            _logger.Info(
+                         $"Connecting to SFTP Server B: {_host}:{_port}");
+
+
             sftp.Connect();
 
             if (!sftp.IsConnected)
             {
+                _logger.Error(
+       "Unable to connect to SFTP Server B.");
+
                 throw new Exception(
                     "Unable to connect to SFTP Server B.");
             }
 
             Console.WriteLine("Connected to SFTP Server B.");
 
+
+            _logger.Info(
+                        "Connected to SFTP Server B successfully.");
+
             string fileName = Path.GetFileName(localFilePath);
 
             string remoteFilePath =
                 $"{_uploadPath.TrimEnd('/')}/{fileName}";
+
+
+            _logger.Info(
+                $"Uploading file to SFTP Server B: {fileName}");
 
             Console.WriteLine(
                 $"Uploading: {fileName}");
@@ -74,8 +99,13 @@ namespace FVUFileMove.Services
 
             Console.WriteLine(
                 $"Upload successful: {remoteFilePath}");
+            _logger.Info(
+                    $"SFTP upload successful: {remoteFilePath}");
 
             sftp.Disconnect();
+
+            _logger.Info(
+                "Disconnected from SFTP Server B.");
         }
     }
 }
