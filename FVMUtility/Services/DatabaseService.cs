@@ -1,13 +1,15 @@
 ﻿    using FVMUtility.Models;
     using Microsoft.Data.SqlClient;
     using Microsoft.Extensions.Configuration;
+using System.Data;
 
     namespace FVUFileMove.Services
     {
         public class DatabaseService
         {
             private readonly string _connectionString;
-            private readonly LogService _logger;
+        private readonly string _upddwnldConnectionString;
+        private readonly LogService _logger;
         public DatabaseService(IConfiguration configuration, LogService logger)
             {
 
@@ -16,7 +18,14 @@
                     configuration.GetConnectionString("CKYCDataBase")
                     ?? throw new InvalidOperationException(
                         "CKYCDataBase connection string is not configured.");
-            }
+
+
+            _upddwnldConnectionString =
+      configuration.GetConnectionString("UPDDWNLDataBase")
+      ?? throw new InvalidOperationException(
+          "UPDDWNLDataBase connection string not found.");
+
+        }
 
 
             public string GetCSRFilePath(string transactionType)
@@ -252,6 +261,30 @@
 
 
 
+
+        public void UpdateBatchWiseAuditDetailsForFileGeneration(
+         string mwBatchId,
+         string createdBy,
+         string message)
+        {
+            using SqlConnection con =
+                new SqlConnection(_upddwnldConnectionString);
+
+            con.Open();
+
+            using SqlCommand cmd =
+                new SqlCommand(
+                    "usp_InsertBatchAuditTrail",
+                    con);
+
+            cmd.CommandType = CommandType.StoredProcedure;
+
+            cmd.Parameters.AddWithValue("@MWBatchID", mwBatchId);
+            cmd.Parameters.AddWithValue("@Message", message);
+            cmd.Parameters.AddWithValue("@CreatedBy", createdBy);
+
+            cmd.ExecuteNonQuery();
         }
+    }
 
     }
