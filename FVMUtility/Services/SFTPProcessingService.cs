@@ -12,12 +12,18 @@ namespace FVUFileMove.Services
         private readonly string _sftpRunnerPath;
         private readonly bool _useApi;
         private readonly LogService _logger;
+        private readonly DatabaseService _databaseService;
 
         public SFTPProcessingService(
             IConfiguration configuration, LogService logger)
         {
 
             _logger = logger;
+
+
+            _databaseService =
+       new DatabaseService(configuration, logger);
+
             _useApi =
                 configuration.GetValue<bool>(
                    "ProcessingSettings:API");
@@ -42,6 +48,11 @@ namespace FVUFileMove.Services
     BatchDetails batch,
     string zipFile)
         {
+            _databaseService.UpdateBatchWiseAuditDetailsForFileGeneration(
+                batch.MWBatchID.ToString(),
+                "FVMUtility",
+    $"{batch.TransactionType.Trim().ToUpperInvariant()} SFTP processing started");
+
             Console.WriteLine();
             Console.WriteLine("SFTP Processing");
             Console.WriteLine("-------------------------");
@@ -68,6 +79,12 @@ namespace FVUFileMove.Services
 
             _logger.Info(
                     $"SFTP ZIP file verified for CSRBatchID: {batch.CSRBatchID}");
+
+            _databaseService.UpdateBatchWiseAuditDetailsForFileGeneration(
+    batch.MWBatchID.ToString(),
+    "FVMUtility",
+    $"{batch.TransactionType.Trim().ToUpperInvariant()} SFTP ZIP file found");
+
 
             Console.WriteLine(
                 "SFTP Execution Mode: "
@@ -102,6 +119,12 @@ namespace FVUFileMove.Services
             _logger.Info(
                     $"SFTP LOCAL processing started for CSRBatchID: {batch.CSRBatchID}");
 
+
+            _databaseService.UpdateBatchWiseAuditDetailsForFileGeneration(
+    batch.MWBatchID.ToString(),
+    "FVMUtility",
+    $"{batch.TransactionType.Trim().ToUpperInvariant()} Local SFTP processing started");
+
             Console.WriteLine(
                 "Executing local SFTPRunner.exe...");
 
@@ -135,6 +158,11 @@ namespace FVUFileMove.Services
 
             Console.WriteLine(
                 "ZIP copied to SFTP upload folder.");
+
+            _databaseService.UpdateBatchWiseAuditDetailsForFileGeneration(
+    batch.MWBatchID.ToString(),
+    "FVMUtility",
+    $"{batch.TransactionType.Trim().ToUpperInvariant()} ZIP copied to SFTP upload folder");
 
             _logger.Info(
                      $"ZIP copied to SFTP upload folder: {destination}");
@@ -180,12 +208,24 @@ namespace FVUFileMove.Services
             Console.WriteLine(
                 "SFTP Runner started successfully.");
 
+
+            _databaseService.UpdateBatchWiseAuditDetailsForFileGeneration(
+                      batch.MWBatchID.ToString(),
+                      "FVMUtility",
+                      $"{batch.TransactionType.Trim().ToUpperInvariant()} SFTP Runner started");
+
             _logger.Info(
                         $"SFTP Runner started successfully for CSRBatchID: {batch.CSRBatchID}");
             sftpProcess.WaitForExit();
 
             Console.WriteLine(
                 "SFTP Runner process completed.");
+
+            _databaseService.UpdateBatchWiseAuditDetailsForFileGeneration(
+                batch.MWBatchID.ToString(),
+                "FVMUtility",
+                $"{batch.TransactionType.Trim().ToUpperInvariant()} SFTP Runner ended");
+            
             _logger.Info(
                     $"SFTP Runner process completed for CSRBatchID: {batch.CSRBatchID}");
         }
@@ -203,6 +243,11 @@ namespace FVUFileMove.Services
             _logger.Info(
             $"SFTP API processing started for CSRBatchID: {batch.CSRBatchID}");
 
+                _databaseService.UpdateBatchWiseAuditDetailsForFileGeneration(
+        batch.MWBatchID.ToString(),
+        "FVMUtility",
+        $"{batch.TransactionType.Trim().ToUpperInvariant()} SFTP API processing started");
+    
 
             Console.WriteLine(
                 "Calling SFTPExecutionAPI...");
@@ -255,6 +300,11 @@ namespace FVUFileMove.Services
             _logger.Info(
     $"SFTPExecutionAPI response received. CSRBatchID: {batch.CSRBatchID} | HTTP Status: {(int)response.StatusCode}");
 
+            _databaseService.UpdateBatchWiseAuditDetailsForFileGeneration(
+    batch.MWBatchID.ToString(),
+    "FVMUtility",
+    $"{batch.TransactionType.Trim().ToUpperInvariant()} SFTP API response received. HTTP Status: {(int)response.StatusCode}");
+
             string responseContent =
                 response.Content
                     .ReadAsStringAsync()
@@ -293,6 +343,11 @@ namespace FVUFileMove.Services
 
             _logger.Info(
                         $"SFTP job accepted by Server B. CSRBatchID: {batch.CSRBatchID}");
+
+            _databaseService.UpdateBatchWiseAuditDetailsForFileGeneration(
+                         batch.MWBatchID.ToString(),
+                         "FVMUtility",
+                         $"{batch.TransactionType.Trim().ToUpperInvariant()} SFTP API request accepted (202)");
 
             Console.WriteLine(
                 "SFTPExecutor is running independently on Server B.");

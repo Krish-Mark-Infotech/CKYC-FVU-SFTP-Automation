@@ -260,6 +260,14 @@ namespace FVUFileMove.Services
                     + " files found: "
                     + files.Length);
 
+                string fileType =
+                            batch.TransactionType.Trim().ToUpperInvariant();
+
+                _databaseService.UpdateBatchWiseAuditDetailsForFileGeneration(
+                    batch.MWBatchID.ToString(),
+                    "FVMUtility",
+                    $"{fileType} file found");
+
                 List<string> movedFiles = new List<string>();
 
                 foreach (string file in files)
@@ -290,6 +298,13 @@ namespace FVUFileMove.Services
 
                     Console.WriteLine(
                         "File copied successfully.");
+
+
+                    _databaseService.UpdateBatchWiseAuditDetailsForFileGeneration(
+                                batch.MWBatchID.ToString(),
+                                "FVMUtility",
+                                $"{fileType} file moved to FVU input");
+
 
                     movedFiles.Add(destinationFile);
                 }
@@ -337,8 +352,22 @@ namespace FVUFileMove.Services
                         "VF",
                         "FVU Utility not found");
 
+
+                    _databaseService.UpdateBatchWiseAuditDetailsForFileGeneration(
+                     batch.MWBatchID.ToString(),
+                     "FVMUtility",
+                     $"{fileType} FVU Not Found");
+
                     return;
                 }
+
+
+
+                _databaseService.UpdateBatchWiseAuditDetailsForFileGeneration(
+                     batch.MWBatchID.ToString(),
+                     "FVMUtility",
+                     $"{fileType} FVU started");
+
 
                 ProcessStartInfo processStartInfo =
                     new ProcessStartInfo
@@ -368,6 +397,10 @@ namespace FVUFileMove.Services
                 Console.WriteLine(
                     "FVU Utility process completed.");
 
+                _databaseService.UpdateBatchWiseAuditDetailsForFileGeneration(
+                     batch.MWBatchID.ToString(),
+                     "FVMUtility",
+                     $"{fileType} FVU utility ended");
                 // CLEAN FVU INPUT FOLDER
                 // =========================
 
@@ -703,9 +736,14 @@ namespace FVUFileMove.Services
                     "No matching FVU output found.");
             }
 
+
             //await Task.CompletedTask;
         }
 
+      
+        
+        
+        
         //    private async Task ProcessFVUOutput(
         //BatchDetails batch,
         //string[] inputFiles)
