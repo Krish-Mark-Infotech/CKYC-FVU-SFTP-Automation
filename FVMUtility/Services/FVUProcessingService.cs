@@ -554,6 +554,7 @@ namespace FVUFileMove.Services
                 "SEARCH" => ".SRC",
                 "DOWNLOAD" => ".DWN",
                 "REGISTRATION" => ".UPL",
+                "UPDATE" => ".UPD",
                 _ => string.Empty
             };
         }
