@@ -125,6 +125,9 @@ namespace FVUFileMove.Services
     "FVMUtility",
     $"{batch.TransactionType.Trim().ToUpperInvariant()} Local SFTP processing started");
 
+
+            _databaseService.UpdateBatchStatus(batch.CSRBatchID, "SI");
+
             Console.WriteLine(
                 "Executing local SFTPRunner.exe...");
 
@@ -172,10 +175,12 @@ namespace FVUFileMove.Services
 
                 _logger.Error(
                     $"SFTP Runner not found: {_sftpRunnerPath}");
-
+                _databaseService.UpdateBatchStatus(batch.CSRBatchID, "SF");
                 throw new FileNotFoundException(
                     "SFTP Runner not found.",
                     _sftpRunnerPath);
+
+
             }
 
             Console.WriteLine(
@@ -201,8 +206,15 @@ namespace FVUFileMove.Services
 
             if (sftpProcess == null)
             {
+                _databaseService.UpdateBatchWiseAuditDetailsForFileGeneration(
+                      batch.MWBatchID.ToString(),
+                      "FVMUtility",
+                      $"{batch.TransactionType.Trim().ToUpperInvariant()} SFTP Runner not started due to unhandle exception");
+                _databaseService.UpdateBatchStatus(batch.CSRBatchID, "SF");
                 throw new Exception(
                     "Unable to start SFTP Runner.");
+                
+
             }
 
             Console.WriteLine(
@@ -225,10 +237,143 @@ namespace FVUFileMove.Services
                 batch.MWBatchID.ToString(),
                 "FVMUtility",
                 $"{batch.TransactionType.Trim().ToUpperInvariant()} SFTP Runner ended");
-            
+
+            File.Delete(destination);
+            _databaseService.UpdateBatchStatus(batch.CSRBatchID, "SS");
             _logger.Info(
                     $"SFTP Runner process completed for CSRBatchID: {batch.CSRBatchID}");
         }
+
+        //add by sahil on 30oct26
+        //private void ProcessSFTPUsingLocal(BatchDetails batch, string zipFile)
+        //{
+        //    _logger.Info($"SFTP LOCAL processing started for CSRBatchID: {batch.CSRBatchID}");
+
+        //    // 1. UPDATE STATUS TO "SI" (SFTP In-progress)
+        //    _databaseService.UpdateBatchStatus(batch.CSRBatchID, "SI");
+
+        //    _databaseService.UpdateBatchWiseAuditDetailsForFileGeneration(
+        //        batch.MWBatchID.ToString(),
+        //        "FVMUtility",
+        //        $"{batch.TransactionType.Trim().ToUpperInvariant()} Local SFTP processing started");
+
+        //    Console.WriteLine("Executing local SFTPRunner.exe...");
+
+        //    if (!Directory.Exists(_sftpInputPath))
+        //    {
+        //        Directory.CreateDirectory(_sftpInputPath);
+        //    }
+
+        //    string fileName = Path.GetFileName(zipFile);
+        //    string destination = Path.Combine(_sftpInputPath, fileName);
+
+        //    Console.WriteLine("SFTP Destination: " + destination);
+
+        //    if (File.Exists(destination))
+        //    {
+        //        File.Delete(destination);
+        //    }
+
+        //    File.Move(zipFile, destination, true); // true = overwrite if exists
+
+        //    Console.WriteLine("ZIP copied to SFTP upload folder.");
+
+        //    _databaseService.UpdateBatchWiseAuditDetailsForFileGeneration(
+        //        batch.MWBatchID.ToString(),
+        //        "FVMUtility",
+        //        $"{batch.TransactionType.Trim().ToUpperInvariant()} ZIP copied to SFTP upload folder");
+
+        //    _logger.Info($"ZIP copied to SFTP upload folder: {destination}");
+
+        //    if (!File.Exists(_sftpRunnerPath))
+        //    {
+        //        _logger.Error($"SFTP Runner not found: {_sftpRunnerPath}");
+        //        throw new FileNotFoundException("SFTP Runner not found.", _sftpRunnerPath);
+        //    }
+
+        //    Console.WriteLine("SFTP Runner Path: " + _sftpRunnerPath);
+        //    _logger.Info($"Starting SFTP Runner: {_sftpRunnerPath}");
+
+        //    // 2. CRITICAL CHANGE: UseShellExecute MUST be false to reliably capture ExitCode
+        //    ProcessStartInfo processStartInfo = new ProcessStartInfo
+        //    {
+        //        FileName = _sftpRunnerPath,
+        //        WorkingDirectory = Path.GetDirectoryName(_sftpRunnerPath),
+        //        UseShellExecute = false,
+        //        CreateNoWindow = true
+        //    };
+
+        //    using Process? sftpProcess = Process.Start(processStartInfo);
+
+        //    if (sftpProcess == null)
+        //    {
+        //        throw new Exception("Unable to start SFTP Runner.");
+        //    }
+
+        //    Console.WriteLine("SFTP Runner started successfully.");
+
+        //    _databaseService.UpdateBatchWiseAuditDetailsForFileGeneration(
+        //        batch.MWBatchID.ToString(),
+        //        "FVMUtility",
+        //        $"{batch.TransactionType.Trim().ToUpperInvariant()} SFTP Runner started");
+
+        //    _logger.Info($"SFTP Runner started successfully for CSRBatchID: {batch.CSRBatchID}");
+
+        //    sftpProcess.WaitForExit();
+
+        //    // 3. CAPTURE THE EXIT CODE
+        //    int exitCode = sftpProcess.ExitCode;
+        //    Console.WriteLine($"SFTPRunner.exe finished. ExitCode={exitCode}");
+
+        //    _databaseService.UpdateBatchWiseAuditDetailsForFileGeneration(
+        //        batch.MWBatchID.ToString(),
+        //        "FVMUtility",
+        //        $"{batch.TransactionType.Trim().ToUpperInvariant()} SFTP Runner ended");
+
+        //    _logger.Info($"SFTP Runner process completed for CSRBatchID: {batch.CSRBatchID}");
+
+        //    // 4. HANDLE SUCCESS OR FAILURE BASED ON EXIT CODE
+        //    if (exitCode == 0)
+        //    {
+        //        Console.WriteLine($"SFTP completed successfully for CSRBatchID={batch.CSRBatchID}");
+
+        //        // UPDATE STATUS TO "SS" (SFTP Success)
+        //        _databaseService.UpdateBatchStatus(batch.CSRBatchID, "SS");
+
+        //        // Delete files from upload folder
+        //        if (Directory.Exists(_sftpInputPath))
+        //        {
+        //            foreach (string file in Directory.GetFiles(_sftpInputPath))
+        //            {
+        //                try
+        //                {
+        //                    // Prevent read-only attribute from blocking deletion
+        //                    File.SetAttributes(file, FileAttributes.Normal);
+        //                    File.Delete(file);
+        //                    Console.WriteLine($"Deleted uploaded file: {file}");
+        //                }
+        //                catch (Exception ex)
+        //                {
+        //                    Console.WriteLine($"Failed to delete file: {file}. Error: {ex.Message}");
+        //                    _logger.Error($"Failed to delete file: {file}. Error: {ex.Message}");
+        //                }
+        //            }
+        //        }
+        //    }
+        //    else
+        //    {
+        //        Console.WriteLine($"SFTP failed for CSRBatchID={batch.CSRBatchID}. ExitCode={exitCode}");
+
+        //        // UPDATE STATUS TO "SF" (SFTP Failed)
+        //        _databaseService.UpdateBatchStatus(
+        //            batch.CSRBatchID,
+        //            "SF",
+        //            $"SFTPRunner.exe failed with exit code {exitCode}");
+
+        //        throw new Exception($"SFTPRunner.exe failed with exit code {exitCode}.");
+        //    }
+        //}
+        //end by sahil on 30oct26
 
 
 

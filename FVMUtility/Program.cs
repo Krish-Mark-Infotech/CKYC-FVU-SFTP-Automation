@@ -39,7 +39,7 @@ namespace FVUFileMove
                     : string.Empty;
 
 
-            //string mwBatchId = "30924";
+            // string mwBatchId = "481508";
             logger.Info(
                 "MWBatchID received: "
                 + mwBatchId);

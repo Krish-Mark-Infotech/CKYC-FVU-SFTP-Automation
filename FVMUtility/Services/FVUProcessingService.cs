@@ -682,6 +682,10 @@ namespace FVUFileMove.Services
                     Console.WriteLine(
                         "Moving ZIP to: " + destination);
 
+
+                    // 30102026 code is terminating from here  
+
+
                     File.Copy(
                         zipFile,
                         destination);
