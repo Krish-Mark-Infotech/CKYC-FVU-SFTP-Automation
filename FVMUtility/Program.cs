@@ -1,6 +1,7 @@
 
 
 using FVUFileMove.Services;
+using Microsoft.Data.SqlClient; //add by sahil on 13nov26
 using Microsoft.Extensions.Configuration;
 
 namespace FVUFileMove
@@ -128,11 +129,38 @@ namespace FVUFileMove
                 logger.Info(
                     "Starting FVUProcessingService.");
 
+                DateTime startTime = DateTime.Now;  //add by sahil on 13nov26
+
                 service.ProcessMWBatch(
                     mwBatchId);
 
                 logger.Info(
                     "FVUProcessingService completed.");
+
+                //add by sahil on 13nov26
+                try
+                {
+                    DateTime endTime = DateTime.Now;
+
+                    using SqlConnection conn = new SqlConnection(
+                        configuration.GetConnectionString("UPDDWNLDataBase"));
+
+                    using SqlCommand cmd = new SqlCommand(
+                        "INSERT INTO MST_JOB_TRCKNG_DTLS (JB_NAME, STRT_TM, END_TM, DURATN) VALUES ('FVMUtility', @start, @end, @dur)",
+                        conn);
+
+                    cmd.Parameters.AddWithValue("@start", startTime);
+                    cmd.Parameters.AddWithValue("@end", endTime);
+                    cmd.Parameters.AddWithValue("@dur", endTime - startTime);
+
+                    conn.Open();
+                    cmd.ExecuteNonQuery();   // synchronous — NO await
+                }
+                catch (Exception trackEx)
+                {
+                    logger.Error("Failed to log job tracking to MST_JOB_TRCKNG_DTLS.", trackEx);
+                }
+                //end by sahil on 13nov26
             }
             catch (Exception ex)
             {
